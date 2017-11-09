@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.7)
 project(mobile-deep-learning)
 include_directories(include /usr/local/include)
-
+OPTION(MDL_INT8 ON)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 11)
 #set(CMAKE_VERBOSE_MAKEFILE on)
@@ -13,7 +13,10 @@ if(IS_IOS)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fobjc-abi-version=2 -fobjc-arc -pthread -isysroot ${CMAKE_OSX_SYSROOT}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-abi-version=2 -fobjc-arc -std=gnu++11 -pthread -stdlib=libc++ -isysroot ${CMAKE_OSX_SYSROOT}")
 endif(IS_IOS)
-
+if(MDL_INT8)
+    include_directories(src/math/gemmlowp)
+    set(CMAKE_CXX_FLAGS  "${CMAKE_C_FLAGS} -msse4.1 -pthread"  )
+endif()
 # Add all headers and source files.
 file(GLOB_RECURSE MDL_CPP src/*.cpp third-party/*.cpp)
 file(GLOB_RECURSE MDL_H *.h)
@@ -32,20 +35,18 @@ include_directories(include/)
 include_directories(third-party/)
 include_directories(src/math/gemmlowp/public/)
 # gen so
-ADD_LIBRARY(mdl SHARED ${MDL_CPP} ${MDL_H} ${OpenBLAS_LIBS})
+ADD_LIBRARY(mdl SHARED ${MDL_CPP} ${MDL_H} ${OpenBLAS_LIBS} src/math/gemm_int8.cpp include/math/gemm_int8.h)
 # gen static
 ADD_LIBRARY(mdl-static STATIC ${MDL_CPP} ${MDL_H} ${OpenBLAS_LIBS})
 find_package(OpenCV 3.3)
-OPTION(MDL_INT8 ON)
+
 # gen test
 ADD_EXECUTABLE(mdlTest test/main.cpp)
 target_link_libraries(mdlTest mdl-static -lglog -pthread  ${OpenCV_LIBS} ${OpenBLAS_LIBS})
 add_subdirectory(caffe_test)
 #if(IS_MAC)
     add_subdirectory(tools)
-if(MDL_INT8)
-    add_subdirectory(src/math/gemmlowp)
-    endif()
+
 
     add_definitions(-DMDL_MAC="true")
 #elseif(V7)
